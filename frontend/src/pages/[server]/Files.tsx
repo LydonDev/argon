@@ -3,12 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-import { 
-  ChevronRight, AlertCircle, Folder, File, 
+import {
+  ChevronRight, AlertCircle, Folder, File,
   Upload, Download, Trash2, RefreshCw, Search,
-  FolderPlus, ArrowLeft, Archive, 
+  FolderPlus, ArrowLeft, Archive,
   Check, X, Edit2, MoreVertical, Copy,
-  FilePlus, Package, Code, FileText, Image, 
+  FilePlus, Package, Code, FileText, Image,
   Music, Video, PackageOpen, Save, Move
 } from 'lucide-react';
 
@@ -42,12 +42,6 @@ interface FileEntry {
   noDelete?: boolean;
   isCargoFile?: boolean;
   customProperties?: Record<string, any>;
-}
-
-interface Toast {
-  id: string;
-  message: string;
-  type: 'success' | 'error';
 }
 
 interface FileAction {
@@ -129,24 +123,6 @@ const canExtractFile = (mime: string): boolean => {
 // Maximum size for viewable files (10MB)
 const MAX_VIEWABLE_FILE_SIZE = 10 * 1024 * 1024;
 
-// Toast component
-const Toast: React.FC<{ toast: Toast }> = ({ toast }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 
-      ${toast.type === 'success' ? 'bg-gray-900 text-white' : 'bg-red-500 text-white'}`}
-  >
-    {toast.type === 'success' ? (
-      <Check className="w-4 h-4" />
-    ) : (
-      <AlertCircle className="w-4 h-4" />
-    )}
-    <span className="text-sm font-medium">{toast.message}</span>
-  </motion.div>
-);
-
 // Custom checkbox component
 const Checkbox: React.FC<{
   checked: boolean;
@@ -154,12 +130,11 @@ const Checkbox: React.FC<{
   className?: string;
 }> = ({ checked, onChange, className = '' }) => (
   <label className={`inline-flex items-center cursor-pointer ${className}`}>
-    <div 
-      className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${
-        checked 
-          ? 'bg-indigo-600 border-indigo-600' 
-          : 'border-gray-300 bg-white'
-      }`}
+    <div
+      className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${checked
+        ? 'bg-indigo-600 border-indigo-600'
+        : 'border-gray-300 bg-white'
+        }`}
       onClick={(e) => {
         e.stopPropagation();
         onChange();
@@ -172,104 +147,104 @@ const Checkbox: React.FC<{
 
 // Context menu
 const ContextMenu: React.FC<{
-    file: FileEntry;
-    position: { x: number; y: number };
-    onClose: () => void;
-    onAction: (action: string) => Promise<void>;
-  }> = ({ file, position, onClose, onAction }) => {
-    const menuRef = useRef<HTMLDivElement>(null);
-    const [menuPosition, setMenuPosition] = useState(position);
-    const fileType = getFileTypeInfo(file.mime);
-  
-    useEffect(() => {
-      const handleClickOutside = (e: MouseEvent) => {
-        if (menuRef.current && e.target instanceof Node && !menuRef.current.contains(e.target)) {
-          onClose();
+  file: FileEntry;
+  position: { x: number; y: number };
+  onClose: () => void;
+  onAction: (action: string) => Promise<void>;
+}> = ({ file, position, onClose, onAction }) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState(position);
+  const fileType = getFileTypeInfo(file.mime);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && e.target instanceof Node && !menuRef.current.contains(e.target)) {
+        onClose();
+      }
+    };
+
+    // Adjust position to keep menu in viewport
+    const adjustPosition = () => {
+      if (menuRef.current) {
+        const rect = menuRef.current.getBoundingClientRect();
+        const viewport = {
+          width: window.innerWidth,
+          height: window.innerHeight
+        };
+
+        let x = position.x;
+        let y = position.y;
+
+        // Adjust horizontal position if menu would overflow
+        if (x + rect.width > viewport.width) {
+          x = Math.max(0, viewport.width - rect.width - 16); // 16px padding from edge
         }
-      };
-  
-      // Adjust position to keep menu in viewport
-      const adjustPosition = () => {
-        if (menuRef.current) {
-          const rect = menuRef.current.getBoundingClientRect();
-          const viewport = {
-            width: window.innerWidth,
-            height: window.innerHeight
-          };
-  
-          let x = position.x;
-          let y = position.y;
-  
-          // Adjust horizontal position if menu would overflow
-          if (x + rect.width > viewport.width) {
-            x = Math.max(0, viewport.width - rect.width - 16); // 16px padding from edge
-          }
-  
-          // Adjust vertical position if menu would overflow
-          if (y + rect.height > viewport.height) {
-            y = Math.max(0, viewport.height - rect.height - 16); // 16px padding from edge
-          }
-  
-          setMenuPosition({ x, y });
+
+        // Adjust vertical position if menu would overflow
+        if (y + rect.height > viewport.height) {
+          y = Math.max(0, viewport.height - rect.height - 16); // 16px padding from edge
         }
-      };
-  
-      document.addEventListener('mousedown', handleClickOutside);
-      
-      // Use a small delay to ensure the menu has been rendered
-      const timer = setTimeout(adjustPosition, 10);
-      
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        clearTimeout(timer);
-      };
-    }, [onClose, position]);
 
-    const isViewable = fileType.viewable || file.size < MAX_VIEWABLE_FILE_SIZE;
-    const isReadOnly = file.readonly === true;
-    const isNoDelete = file.noDelete === true;
+        setMenuPosition({ x, y });
+      }
+    };
 
-    const actions = [
-      ...(fileType.canEdit || isViewable ? [{ label: 'Edit/View', icon: Edit2, action: 'edit' }] : []),
-      ...(canExtractFile(file.mime) ? [{ label: 'Extract', icon: PackageOpen, action: 'extract' }] : []),
-      { label: 'Download', icon: Download, action: 'download' },
-      { label: 'Copy', icon: Copy, action: 'copy' },
-      { label: 'Rename', icon: Edit2, action: 'rename', disabled: isReadOnly || isNoDelete },
-      { label: 'Move', icon: Move, action: 'move', disabled: isReadOnly || isNoDelete },
-      { label: 'Delete', icon: Trash2, action: 'delete', destructive: true, disabled: isNoDelete }
-    ];
+    document.addEventListener('mousedown', handleClickOutside);
 
-    return (
-      <motion.div
-        ref={menuRef}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.1 }}
-        className="fixed z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
-        style={{ top: menuPosition.y, left: menuPosition.x }}
-      >
-        {actions.map(({ label, icon: Icon, action, destructive, disabled }) => (
-          <button
-            key={action}
-            onClick={() => {
-              if (!disabled) {
-                onAction(action);
-              }
-            }}
-            disabled={disabled}
-            className={`w-full px-3 py-2 text-left flex items-center space-x-2 text-sm 
+    // Use a small delay to ensure the menu has been rendered
+    const timer = setTimeout(adjustPosition, 10);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      clearTimeout(timer);
+    };
+  }, [onClose, position]);
+
+  const isViewable = fileType.viewable || file.size < MAX_VIEWABLE_FILE_SIZE;
+  const isReadOnly = file.readonly === true;
+  const isNoDelete = file.noDelete === true;
+
+  const actions = [
+    ...(fileType.canEdit || isViewable ? [{ label: 'Edit/View', icon: Edit2, action: 'edit' }] : []),
+    ...(canExtractFile(file.mime) ? [{ label: 'Extract', icon: PackageOpen, action: 'extract' }] : []),
+    { label: 'Download', icon: Download, action: 'download' },
+    { label: 'Copy', icon: Copy, action: 'copy' },
+    { label: 'Rename', icon: Edit2, action: 'rename', disabled: isReadOnly || isNoDelete },
+    { label: 'Move', icon: Move, action: 'move', disabled: isReadOnly || isNoDelete },
+    { label: 'Delete', icon: Trash2, action: 'delete', destructive: true, disabled: isNoDelete }
+  ];
+
+  return (
+    <motion.div
+      ref={menuRef}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.1 }}
+      className="fixed z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+      style={{ top: menuPosition.y, left: menuPosition.x }}
+    >
+      {actions.map(({ label, icon: Icon, action, destructive, disabled }) => (
+        <button
+          key={action}
+          onClick={() => {
+            if (!disabled) {
+              onAction(action);
+            }
+          }}
+          disabled={disabled}
+          className={`w-full px-3 py-2 text-left flex items-center space-x-2 text-sm 
               ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-              ${destructive 
-                ? 'text-red-600 hover:bg-red-50' 
-                : 'text-gray-700 hover:bg-gray-50'}`}
-          >
-            <Icon className="w-4 h-4" />
-            <span>{label}</span>
-          </button>
-        ))}
-      </motion.div>
-    );
+              ${destructive
+              ? 'text-red-600 hover:bg-red-50'
+              : 'text-gray-700 hover:bg-gray-50'}`}
+        >
+          <Icon className="w-4 h-4" />
+          <span>{label}</span>
+        </button>
+      ))}
+    </motion.div>
+  );
 };
 
 // Main component
@@ -286,7 +261,7 @@ const FileManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [diskUsage, setDiskUsage] = useState<DiskUsage | null>(null);
-  const [operationLoading, setOperationLoading] = useState<{[key: string]: boolean}>({});
+  const [operationLoading, setOperationLoading] = useState<{ [key: string]: boolean }>({});
 
   // UI state
   const [modal, setModal] = useState<Modal | null>(null);
@@ -294,7 +269,6 @@ const FileManager: React.FC = () => {
     file: FileEntry;
     position: { x: number; y: number };
   } | null>(null);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const [search, setSearch] = useState('');
   const [fileActions, setFileActions] = useState<Record<string, FileAction>>({});
@@ -308,14 +282,6 @@ const FileManager: React.FC = () => {
   // Computed values
   const currentFullPath = useMemo(() => currentPath.join('/'), [currentPath]);
 
-  // Toast handler
-  const showToast = useCallback((message: string, type: Toast['type'] = 'success') => {
-    const id = Math.random().toString(36);
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
-  }, []);
 
   // API calls
   const fetchServer = useCallback(async () => {
@@ -323,15 +289,14 @@ const FileManager: React.FC = () => {
       const response = await fetch(`/api/servers/${id}?include[node]=true`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (!response.ok) throw new Error('Failed to fetch server details');
       const data = await response.json();
       setServer(data);
     } catch (err) {
       setError('Failed to fetch server details');
-      showToast('Failed to fetch server details', 'error');
     }
-  }, [id, token, showToast]);
+  }, [id, token]);
 
   const fetchFiles = useCallback(async () => {
     if (!server) return;
@@ -349,11 +314,10 @@ const FileManager: React.FC = () => {
       setError(null);
     } catch (err) {
       setError('Failed to fetch files');
-      showToast('Failed to fetch files', 'error');
     } finally {
       setLoading(false);
     }
-  }, [server, currentFullPath, showHidden, showToast]);
+  }, [server, currentFullPath, showHidden]);
 
   const fetchDiskUsage = useCallback(async () => {
     if (!server) return;
@@ -384,10 +348,9 @@ const FileManager: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch file contents');
       return await response.text();
     } catch (err) {
-      showToast('Failed to load file contents', 'error');
       return '';
     }
-  }, [server, currentFullPath, showToast]);
+  }, [server, currentFullPath]);
 
   const searchFiles = useCallback(async (query: string) => {
     if (!server || !query) return;
@@ -403,11 +366,10 @@ const FileManager: React.FC = () => {
       const data = await response.json();
       setFiles(data.results);
     } catch (err) {
-      showToast('Failed to search files', 'error');
     } finally {
       setLoading(false);
     }
-  }, [server, currentFullPath, showHidden, showToast]);
+  }, [server, currentFullPath, showHidden]);
 
   // File operations
   const handleFileAction = useCallback(async (action: string, file: FileEntry) => {
@@ -425,7 +387,7 @@ const FileManager: React.FC = () => {
           setModal({ type: 'file-editor', data: { file, content } });
           break;
         }
-        
+
         case 'extract': {
           setOperationLoading(prev => ({ ...prev, extract: true }));
           const response = await fetch(
@@ -441,7 +403,6 @@ const FileManager: React.FC = () => {
           );
 
           if (!response.ok) throw new Error('Failed to extract archive');
-          showToast(`Extracted ${file.name}`);
           await fetchFiles();
           setOperationLoading(prev => ({ ...prev, extract: false }));
           break;
@@ -449,10 +410,9 @@ const FileManager: React.FC = () => {
 
         case 'delete': {
           if (file.noDelete) {
-            showToast(`Cannot delete protected file: ${file.name}`, 'error');
             break;
           }
-          
+
           setOperationLoading(prev => ({ ...prev, delete: true }));
           const response = await fetch(
             `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/delete/${currentFullPath}/${file.name}`,
@@ -463,7 +423,6 @@ const FileManager: React.FC = () => {
           );
 
           if (!response.ok) throw new Error('Failed to delete file');
-          showToast(`Deleted ${file.name}`);
           await fetchFiles();
           await fetchDiskUsage();
           setOperationLoading(prev => ({ ...prev, delete: false }));
@@ -480,20 +439,18 @@ const FileManager: React.FC = () => {
 
         case 'rename': {
           if (file.readonly || file.noDelete) {
-            showToast(`Cannot rename protected file: ${file.name}`, 'error');
             break;
           }
-          
+
           setModal({ type: 'rename', data: { file } });
           break;
         }
 
         case 'move': {
           if (file.readonly || file.noDelete) {
-            showToast(`Cannot move protected file: ${file.name}`, 'error');
             break;
           }
-          
+
           setModal({ type: 'move', data: { file } });
           break;
         }
@@ -504,7 +461,6 @@ const FileManager: React.FC = () => {
         }
       }
     } catch (err) {
-      showToast(`Failed to ${action} ${file.name}`, 'error');
     } finally {
       setFileActions(prev => ({
         ...prev,
@@ -512,7 +468,7 @@ const FileManager: React.FC = () => {
       }));
       setContextMenu(null);
     }
-  }, [server, currentFullPath, getFileContents, fetchFiles, fetchDiskUsage, showToast]);
+  }, [server, currentFullPath, getFileContents, fetchFiles, fetchDiskUsage]);
 
   const handleCreateFile = useCallback(async (name: string) => {
     if (!server) return;
@@ -523,7 +479,7 @@ const FileManager: React.FC = () => {
         `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/write/${currentFullPath}/${name}`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             Authorization: `Bearer ${server?.validationToken}`,
             'Content-Type': 'application/octet-stream'
           },
@@ -532,16 +488,14 @@ const FileManager: React.FC = () => {
       );
 
       if (!response.ok) throw new Error('Failed to create file');
-      
-      showToast(`Created file ${name}`);
+
       setModal(null);
       await fetchFiles();
       await fetchDiskUsage();
     } catch (err) {
-      showToast('Failed to create file', 'error');
       setModal(prev => prev ? { ...prev, loading: false } : null);
     }
-  }, [server, currentFullPath, fetchFiles, fetchDiskUsage, showToast]);
+  }, [server, currentFullPath, fetchFiles, fetchDiskUsage]);
 
   const handleCreateFolder = useCallback(async (name: string) => {
     if (!server) return;
@@ -557,15 +511,13 @@ const FileManager: React.FC = () => {
       );
 
       if (!response.ok) throw new Error('Failed to create folder');
-      
-      showToast(`Created folder ${name}`);
+
       setModal(null);
       await fetchFiles();
     } catch (err) {
-      showToast('Failed to create folder', 'error');
       setModal(prev => prev ? { ...prev, loading: false } : null);
     }
-  }, [server, currentFullPath, fetchFiles, showToast]);
+  }, [server, currentFullPath, fetchFiles]);
 
   const handleRenameFile = useCallback(async (file: FileEntry, newName: string) => {
     if (!server) return;
@@ -574,12 +526,12 @@ const FileManager: React.FC = () => {
       setModal(prev => prev ? { ...prev, loading: true } : null);
       const oldPath = `${currentFullPath}/${file.name}`;
       const newPath = `${currentFullPath}/${newName}`;
-      
+
       const response = await fetch(
         `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/rename`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             Authorization: `Bearer ${server?.validationToken}`,
             'Content-Type': 'application/json'
           },
@@ -588,15 +540,13 @@ const FileManager: React.FC = () => {
       );
 
       if (!response.ok) throw new Error('Failed to rename file');
-      
-      showToast(`Renamed ${file.name} to ${newName}`);
+
       setModal(null);
       await fetchFiles();
     } catch (err) {
-      showToast('Failed to rename file', 'error');
       setModal(prev => prev ? { ...prev, loading: false } : null);
     }
-  }, [server, currentFullPath, fetchFiles, showToast]);
+  }, [server, currentFullPath, fetchFiles]);
 
   const handleMoveFile = useCallback(async (file: FileEntry, targetPath: string, isCopy: boolean = false) => {
     if (!server) return;
@@ -605,13 +555,13 @@ const FileManager: React.FC = () => {
       setModal(prev => prev ? { ...prev, loading: true } : null);
       const fromPath = `${currentFullPath}/${file.name}`;
       const toPath = `${targetPath}/${file.name}`;
-      
+
       if (isCopy) {
         const response = await fetch(
           `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/copy`,
           {
             method: 'POST',
-            headers: { 
+            headers: {
               Authorization: `Bearer ${server?.validationToken}`,
               'Content-Type': 'application/json'
             },
@@ -620,13 +570,12 @@ const FileManager: React.FC = () => {
         );
 
         if (!response.ok) throw new Error('Failed to copy file');
-        showToast(`Copied ${file.name} to ${targetPath}`);
       } else {
         const response = await fetch(
           `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/rename`,
           {
             method: 'POST',
-            headers: { 
+            headers: {
               Authorization: `Bearer ${server?.validationToken}`,
               'Content-Type': 'application/json'
             },
@@ -635,17 +584,15 @@ const FileManager: React.FC = () => {
         );
 
         if (!response.ok) throw new Error('Failed to move file');
-        showToast(`Moved ${file.name} to ${targetPath}`);
       }
-      
+
       setModal(null);
       await fetchFiles();
       await fetchDiskUsage();
     } catch (err) {
-      showToast(`Failed to ${isCopy ? 'copy' : 'move'} file`, 'error');
       setModal(prev => prev ? { ...prev, loading: false } : null);
     }
-  }, [server, currentFullPath, fetchFiles, fetchDiskUsage, showToast]);
+  }, [server, currentFullPath, fetchFiles, fetchDiskUsage]);
 
   const handleChmodFile = useCallback(async (file: FileEntry, mode: string) => {
     if (!server) return;
@@ -653,12 +600,12 @@ const FileManager: React.FC = () => {
     try {
       setModal(prev => prev ? { ...prev, loading: true } : null);
       const filePath = `${currentFullPath}/${file.name}`;
-      
+
       const response = await fetch(
         `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/chmod`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             Authorization: `Bearer ${server?.validationToken}`,
             'Content-Type': 'application/json'
           },
@@ -667,19 +614,17 @@ const FileManager: React.FC = () => {
       );
 
       if (!response.ok) throw new Error('Failed to change permissions');
-      
-      showToast(`Changed permissions for ${file.name}`);
+
       setModal(null);
       await fetchFiles();
     } catch (err) {
-      showToast('Failed to change permissions', 'error');
       setModal(prev => prev ? { ...prev, loading: false } : null);
     }
-  }, [server, currentFullPath, fetchFiles, showToast]);
+  }, [server, currentFullPath, fetchFiles]);
 
   const handleMassDelete = useCallback(async () => {
     if (!server || selectedFiles.size === 0) return;
-    
+
     if (!confirm(`Are you sure you want to delete ${selectedFiles.size} items?`)) {
       return;
     }
@@ -698,22 +643,19 @@ const FileManager: React.FC = () => {
 
         if (!response.ok) {
           success = false;
-          showToast(`Failed to delete ${fileName}`, 'error');
         }
       } catch (err) {
         success = false;
-        showToast(`Failed to delete ${fileName}`, 'error');
       }
     }
 
     if (success) {
-      showToast(`Deleted ${selectedFiles.size} items`);
     }
     setSelectedFiles(new Set());
     await fetchFiles();
     await fetchDiskUsage();
     setOperationLoading(prev => ({ ...prev, massDelete: false }));
-  }, [server, currentFullPath, selectedFiles, fetchFiles, fetchDiskUsage, showToast]);
+  }, [server, currentFullPath, selectedFiles, fetchFiles, fetchDiskUsage]);
 
   const handleUpload = useCallback(async (files: FileList | File[]) => {
     if (!server) return;
@@ -731,14 +673,14 @@ const FileManager: React.FC = () => {
       formData.append('files', upload.file);
 
       try {
-        setUploads(prev => 
-          prev.map(u => 
-            u.file === upload.file 
-              ? { ...u, status: 'uploading', progress: 10 } 
+        setUploads(prev =>
+          prev.map(u =>
+            u.file === upload.file
+              ? { ...u, status: 'uploading', progress: 10 }
               : u
           )
         );
-        
+
         const response = await fetch(
           `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/upload/${currentFullPath}`,
           {
@@ -750,23 +692,21 @@ const FileManager: React.FC = () => {
 
         if (!response.ok) throw new Error('Upload failed');
 
-        setUploads(prev => 
-          prev.map(u => 
-            u.file === upload.file 
-              ? { ...u, status: 'complete', progress: 100 } 
+        setUploads(prev =>
+          prev.map(u =>
+            u.file === upload.file
+              ? { ...u, status: 'complete', progress: 100 }
               : u
           )
         );
-        showToast(`Uploaded ${upload.file.name}`);
       } catch (err) {
-        setUploads(prev => 
-          prev.map(u => 
-            u.file === upload.file 
-              ? { ...u, status: 'error', error: 'Upload failed' } 
+        setUploads(prev =>
+          prev.map(u =>
+            u.file === upload.file
+              ? { ...u, status: 'error', error: 'Upload failed' }
               : u
           )
         );
-        showToast(`Failed to upload ${upload.file.name}`, 'error');
       }
     }
 
@@ -775,7 +715,7 @@ const FileManager: React.FC = () => {
     setTimeout(() => {
       setUploads(prev => prev.filter(u => u.status === 'pending' || u.status === 'uploading'));
     }, 3000);
-  }, [server, currentFullPath, fetchFiles, fetchDiskUsage, showToast]);
+  }, [server, currentFullPath, fetchFiles, fetchDiskUsage]);
 
   const handleCompress = useCallback(async (name: string) => {
     if (!server || selectedFiles.size === 0) return;
@@ -786,7 +726,7 @@ const FileManager: React.FC = () => {
         `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/compress`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             Authorization: `Bearer ${server?.validationToken}`,
             'Content-Type': 'application/json'
           },
@@ -798,17 +738,15 @@ const FileManager: React.FC = () => {
       );
 
       if (!response.ok) throw new Error('Failed to create archive');
-      
-      showToast('Archive created successfully');
+
       setModal(null);
       setSelectedFiles(new Set());
       await fetchFiles();
       await fetchDiskUsage();
     } catch (err) {
-      showToast('Failed to create archive', 'error');
       setModal(prev => prev ? { ...prev, loading: false } : null);
     }
-  }, [server, currentFullPath, selectedFiles, fetchFiles, fetchDiskUsage, showToast]);
+  }, [server, currentFullPath, selectedFiles, fetchFiles, fetchDiskUsage]);
 
   const handleSaveFile = useCallback(async (file: FileEntry, content: string): Promise<boolean> => {
     if (!server) return false;
@@ -823,7 +761,7 @@ const FileManager: React.FC = () => {
         `http://${server.node.fqdn}:${server.node.port}/api/v1/filesystem/${server.internalId}/write/${currentFullPath}/${file.name}`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             Authorization: `Bearer ${server?.validationToken}`,
             'Content-Type': 'application/octet-stream'
           },
@@ -832,11 +770,9 @@ const FileManager: React.FC = () => {
       );
 
       if (!response.ok) throw new Error('Failed to save file');
-      
-      showToast('File saved successfully');
+
       return true;
     } catch (err) {
-      showToast('Failed to save file', 'error');
       return false;
     } finally {
       setFileActions(prev => ({
@@ -844,19 +780,19 @@ const FileManager: React.FC = () => {
         [file.name]: { loading: false, type: 'save' }
       }));
     }
-  }, [server, currentFullPath, showToast]);
+  }, [server, currentFullPath]);
 
   // Drag and drop handlers
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (e.type === 'dragenter') {
       dragCounterRef.current += 1;
     } else if (e.type === 'dragleave') {
       dragCounterRef.current -= 1;
     }
-    
+
     if (e.type === 'dragenter' && dragCounterRef.current === 1) {
       setDropZoneActive(true);
     } else if (e.type === 'dragleave' && dragCounterRef.current === 0) {
@@ -934,7 +870,7 @@ const FileManager: React.FC = () => {
   }, [files]);
 
   return (
-    <div 
+    <div
       className="min-h-screen px-8 py-8 bg-gray-50"
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
@@ -942,11 +878,6 @@ const FileManager: React.FC = () => {
       onDrop={handleDrop}
     >
       {/* Toast Messages */}
-      <AnimatePresence>
-        {toasts.map(toast => (
-          <Toast key={toast.id} toast={toast} />
-        ))}
-      </AnimatePresence>
 
       {/* Drop Zone Overlay */}
       <AnimatePresence>
@@ -974,7 +905,7 @@ const FileManager: React.FC = () => {
       {/* Selected Files Action Bar */}
       <AnimatePresence>
         {selectedFiles.size > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -1037,7 +968,7 @@ const FileManager: React.FC = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-gray-900">File Manager</h1>
             {error && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center px-3 py-1.5 text-xs text-red-700 bg-red-50 border border-red-100 rounded-md"
@@ -1071,8 +1002,8 @@ const FileManager: React.FC = () => {
               onClick={() => setCurrentPath(prev => prev.slice(0, -1))}
               disabled={currentPath.length === 0}
               className={`p-2 text-gray-500 transition-colors duration-100
-                ${currentPath.length === 0 
-                  ? 'opacity-50 cursor-not-allowed' 
+                ${currentPath.length === 0
+                  ? 'opacity-50 cursor-not-allowed'
                   : 'hover:text-gray-900'}`}
             >
               <ArrowLeft className="w-4 h-4" />
@@ -1115,11 +1046,10 @@ const FileManager: React.FC = () => {
             {/* Show Hidden Files */}
             <button
               onClick={() => setShowHidden(prev => !prev)}
-              className={`flex items-center px-3 py-1.5 text-xs font-medium rounded-md ${
-                showHidden 
-                  ? 'text-blue-700 bg-blue-50 border border-blue-200' 
-                  : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'
-              }`}
+              className={`flex items-center px-3 py-1.5 text-xs font-medium rounded-md ${showHidden
+                ? 'text-blue-700 bg-blue-50 border border-blue-200'
+                : 'text-gray-700 bg-white border border-gray-200 hover:bg-gray-50'
+                }`}
             >
               {showHidden ? 'Hide Hidden Files' : 'Show Hidden Files'}
             </button>
@@ -1201,7 +1131,7 @@ const FileManager: React.FC = () => {
                       </motion.div>
                     ) : (
                       <div className="w-32 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <motion.div 
+                        <motion.div
                           className="h-full bg-gray-900"
                           initial={{ width: 0 }}
                           animate={{ width: `${upload.progress}%` }}
@@ -1222,7 +1152,7 @@ const FileManager: React.FC = () => {
             <span className="text-gray-500">Loading file ...</span>
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="border border-gray-200/50 rounded-xl overflow-hidden"
@@ -1273,24 +1203,23 @@ const FileManager: React.FC = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center space-x-3">
-                          <FileIcon 
-                            className={`w-4 h-4 ${
-                              !file.isFile 
-                                ? 'text-[#8146ab]'  // Folder icon color - Argon Purple
-                                : file.mime.startsWith('image/') 
+                          <FileIcon
+                            className={`w-4 h-4 ${!file.isFile
+                              ? 'text-[#8146ab]'  // Folder icon color - Argon Purple
+                              : file.mime.startsWith('image/')
                                 ? 'text-amber-600'  // Image files
                                 : file.mime.startsWith('text/') || file.mime.includes('javascript') || file.mime.includes('json')
-                                ? 'text-blue-600'  // Text/code files
-                                : file.mime.includes('pdf')
-                                ? 'text-red-600'  // PDF files
-                                : file.mime.startsWith('audio/')
-                                ? 'text-yellow-600'  // Audio files
-                                : file.mime.startsWith('video/')
-                                ? 'text-pink-600'  // Video files
-                                : file.mime.includes('zip') || file.mime.includes('tar') || file.mime.includes('compress')
-                                ? 'text-orange-600'  // Archive files
-                                : 'text-gray-600'  // Default
-                            }`}
+                                  ? 'text-blue-600'  // Text/code files
+                                  : file.mime.includes('pdf')
+                                    ? 'text-red-600'  // PDF files
+                                    : file.mime.startsWith('audio/')
+                                      ? 'text-yellow-600'  // Audio files
+                                      : file.mime.startsWith('video/')
+                                        ? 'text-pink-600'  // Video files
+                                        : file.mime.includes('zip') || file.mime.includes('tar') || file.mime.includes('compress')
+                                          ? 'text-orange-600'  // Archive files
+                                          : 'text-gray-600'  // Default
+                              }`}
                           />
                           <div className="flex flex-col">
                             <span className="text-sm text-gray-900">
@@ -1369,9 +1298,8 @@ const FileManager: React.FC = () => {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 transition={{ duration: 0.1 }}
-                className={`bg-white rounded-xl shadow-xl ${
-                  modal.type === 'file-editor' ? 'w-[900px] h-[600px]' : 'w-[400px]'
-                }`}
+                className={`bg-white rounded-xl shadow-xl ${modal.type === 'file-editor' ? 'w-[900px] h-[600px]' : 'w-[400px]'
+                  }`}
               >
                 {/* File Editor Modal */}
                 {modal.type === 'file-editor' && (
@@ -1520,7 +1448,7 @@ const FileManager: React.FC = () => {
                                   disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {modal.loading ? 'Creating...' : 'Create'}
-                          </button>
+                        </button>
                       </div>
                     </form>
                   </div>
@@ -1579,8 +1507,8 @@ const FileManager: React.FC = () => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
                       await handleMoveFile(
-                        modal.data.file, 
-                        formData.get('path') as string, 
+                        modal.data.file,
+                        formData.get('path') as string,
                         modal.data.isCopy
                       );
                     }}>
@@ -1723,7 +1651,7 @@ const FileManager: React.FC = () => {
         {/* Context Menu */}
         <AnimatePresence>
           {contextMenu && (
-            <ContextMenu 
+            <ContextMenu
               file={contextMenu.file}
               position={contextMenu.position}
               onClose={() => setContextMenu(null)}
