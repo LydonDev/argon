@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
+import {
   SendIcon, Play, Square, RefreshCw,
   ChevronRight, AlertCircle, Globe, Hash, Terminal,
   WifiOff
@@ -105,7 +105,7 @@ const ServerConsolePage = () => {
   });
   const [showEulaModal, setShowEulaModal] = useState(false);
   const [eulaAccepting, setEulaAccepting] = useState(false);
-  
+
   const wsRef = useRef<WebSocket | null>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
 
@@ -119,16 +119,10 @@ const ServerConsolePage = () => {
     }
   };
 
-  // Check if EULA acceptance is required
-  const requiresEulaAcceptance = () => {
-    const features = getServerFeatures();
-    return features.some((feature: any) => feature.name === 'eula-agreement' && feature.type === 'required');
-  };
-
   // Handle EULA acceptance
   const handleEulaAcceptance = async () => {
     if (!server || eulaAccepting) return;
-    
+
     setEulaAccepting(true);
     try {
       const token = localStorage.getItem('token');
@@ -165,8 +159,7 @@ const ServerConsolePage = () => {
       console.error('Failed to accept EULA:', error);
       setMessages(prev => [
         ...prev,
-        `\x1b[31m[System] Failed to accept EULA: ${
-          error instanceof Error ? error.message : String(error)
+        `\x1b[31m[System] Failed to accept EULA: ${error instanceof Error ? error.message : String(error)
         }\x1b[0m`
       ]);
     } finally {
@@ -181,33 +174,33 @@ const ServerConsolePage = () => {
         if (!token) {
           throw new Error('Authentication token not found');
         }
-        
+
         // Set a timeout to handle slow API responses
         const timeoutId = setTimeout(() => {
           if (loading) {
             setError('Server request is taking longer than expected...');
           }
         }, 3000);
-        
+
         const response = await fetch(`/api/servers/${id}?include[node]=true&include[status]=true`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Failed to fetch server: ${response.status} ${errorText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (!data.node?.fqdn || !data.node?.port) {
           throw new Error('Server node information is missing');
         }
-        
+
         setServer(data);
         initWebSocket(data);
 
@@ -242,14 +235,14 @@ const ServerConsolePage = () => {
       setNodeDown(true); // Immediately show node down state
       return;
     }
-  
+
     // Close any existing WebSocket connection before creating a new one
     if (wsRef.current) {
       wsRef.current.close();
     }
-  
+
     const wsUrl = `ws://${serverData.node.fqdn}:${serverData.node.port}?server=${serverData.internalId}&token=${serverData.validationToken}`;
-    
+
     // Set a very short initial timeout to catch immediate connection failures
     const immediateTimeout = setTimeout(() => {
       // If we're still loading after this timeout, show a temporary message
@@ -257,12 +250,12 @@ const ServerConsolePage = () => {
         setError('Attempting to connect to Krypton node...');
       }
     }, 500);
-    
+
     try {
       console.log(`Attempting to connect to WebSocket: ${wsUrl}`);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
-      
+
       // Set connection timeout - shorter to provide faster feedback
       const connectionTimeout = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
@@ -272,7 +265,7 @@ const ServerConsolePage = () => {
           handleConnectionFailure();
         }
       }, 3000); // 3 seconds timeout - reduced for faster feedback
-    
+
       ws.onopen = () => {
         clearTimeout(connectionTimeout);
         clearTimeout(immediateTimeout);
@@ -283,67 +276,67 @@ const ServerConsolePage = () => {
         setConnectionAttempts(0);
         setLoading(false);
       };
-    
+
       ws.onmessage = (event) => {
         // Connection is working if we're getting messages
         setLoading(false);
-        
+
         const message: ConsoleMessage = JSON.parse(event.data);
-        
+
         switch (message.event) {
           case 'console_output':
             if (typeof message.data.message === 'string') {
               // Check for EULA requirement message
               const hasEulaMessage = message.data.message.includes('You need to agree to the EULA in order to run the server');
-              const requiresEula = true; // requiresEulaAcceptance();
+              const requiresEula = true;
               const modalNotShown = !showEulaModal;
-              
-              console.log('EULA Check:', { 
-                hasEulaMessage, 
-                requiresEula, 
-                modalNotShown, 
+
+              console.log('EULA Check:', {
+                hasEulaMessage,
+                requiresEula,
+                modalNotShown,
                 features: getServerFeatures(),
-                message: message.data.message 
+                message: message.data.message
               });
-              
+
               if (hasEulaMessage && requiresEula && modalNotShown) {
                 console.log('Showing EULA modal');
                 setShowEulaModal(true);
               }
-              
+
               // @ts-ignore
               setMessages(prev => [...prev, message.data.message]);
             }
             break;
-          
+
           case 'auth_success':
             if (message.data.logs) {
               setMessages(message.data.logs.map(log => log));
             }
             break;
-          
+
           case 'stats':
             if (message.data.cpu_percent !== undefined) {
               setLiveStats({
                 cpuPercent: message.data.cpu_percent || 0,
                 memory: message.data.memory || { used: 0, limit: 0, percent: 0 },
-                network: message.data.network 
+                network: message.data.network
                   ? { rxBytes: message.data.network.rx_bytes, txBytes: message.data.network.tx_bytes }
                   : { rxBytes: 0, txBytes: 0 }
               });
             }
-            
+
             if (message.data.state) {
               const newState = message.data.state;
               setServer(prev => prev ? { ...prev, state: newState || prev.state } : null);
-              
+
               // Reset stopCommandSent when server reaches stopped state
               if (newState?.toLowerCase() === 'stopped') {
                 setStopCommandSent(false);
               }
             }
             break;
-          
+
           case 'power_status':
             if (message.data.status !== undefined) {
               // @ts-ignore
@@ -351,7 +344,7 @@ const ServerConsolePage = () => {
             }
             setPowerLoading(false);
             break;
-          
+
           case 'error':
             const errorMsg = message.data.message || 'An unknown error occurred';
             setError(errorMsg);
@@ -360,19 +353,19 @@ const ServerConsolePage = () => {
             break;
         }
       };
-    
+
       ws.onclose = (event) => {
         clearTimeout(connectionTimeout);
         clearTimeout(immediateTimeout);
         console.log(`WebSocket disconnected with code: ${event.code}, reason: ${event.reason}`);
         setConnected(false);
-        
+
         // Only attempt to reconnect if the node is not marked as down
         if (!nodeDown) {
           // Increment connection attempts on close
           const newAttemptCount = connectionAttempts + 1;
           setConnectionAttempts(newAttemptCount);
-          
+
           // If we've reached max attempts, mark node as down
           if (newAttemptCount >= MAX_CONNECTION_ATTEMPTS) {
             console.log(`Max connection attempts (${MAX_CONNECTION_ATTEMPTS}) reached. Marking node as down.`);
@@ -388,7 +381,7 @@ const ServerConsolePage = () => {
           }
         }
       };
-    
+
       ws.onerror = (error) => {
         clearTimeout(connectionTimeout);
         clearTimeout(immediateTimeout);
@@ -409,7 +402,7 @@ const ServerConsolePage = () => {
     setConnected(false);
     setLoading(false);
     setError('Failed to connect to Krypton. The node may be down or experiencing issues.');
-    
+
     console.log('Connection to Krypton failed. Node marked as down.');
   };
 
@@ -420,18 +413,18 @@ const ServerConsolePage = () => {
       setMessages(prev => [...prev, '\x1b[33m[System] Cannot send command - WebSocket not connected or empty command\x1b[0m']);
       return;
     }
-  
+
     if (!isServerActive) {
       setMessages(prev => [...prev, '\x1b[33m[System] Cannot send command - server is not running\x1b[0m']);
       return;
     }
-  
+
     try {
       wsRef.current.send(JSON.stringify({
         event: 'send_command',
         data: command
       }));
-  
+
       // Log successful send
       setMessages(prev => [...prev, '\x1b[32m$ \x1b[0m' + command + '\x1b[0m']);
       setCommand('');
@@ -440,13 +433,13 @@ const ServerConsolePage = () => {
       setMessages(prev => [...prev, `\x1b[31m[System] Failed to send command: ${error}\x1b[0m`]);
     }
   };
-  
+
   // Handle stop command (using server's configured stop command)
   const handleStopCommand = () => {
     if (!server || !wsRef.current || !isServerActive) return;
-    
+
     const stopCommand = server.unit?.startup?.stopCommand || 'stop';
-    
+
     try {
       wsRef.current.send(JSON.stringify({
         event: 'send_command',
@@ -467,14 +460,14 @@ const ServerConsolePage = () => {
 
   const handlePowerAction = async (action: 'start' | 'restart' | 'kill') => {
     if (!server || powerLoading || !wsRef.current) return;
-    
+
     setPowerLoading(true);
-    
+
     // Reset stop command sent flag when performing any power action
     if (action === 'kill' || action === 'start') {
       setStopCommandSent(false);
     }
-    
+
     try {
       wsRef.current.send(JSON.stringify({
         event: 'power_action',
@@ -499,7 +492,7 @@ const ServerConsolePage = () => {
     setNodeDown(false);
     setConnectionAttempts(0);
     setLoading(true);
-    
+
     if (server) {
       initWebSocket(server);
     } else {
@@ -518,13 +511,13 @@ const ServerConsolePage = () => {
           <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-lg mb-6">
             <WifiOff className="w-8 h-8 text-gray-500" />
           </div>
-          
+
           <h2 className="text-xl font-semibold tracking-tight text-gray-900 mb-2">Node connection failed</h2>
-          
+
           <p className="text-gray-600 text-xs mb-6">
             We're unable to connect to your server. Please contact an administrator.
           </p>
-          
+
           <div className="space-y-4">
             <button
               onClick={handleRetryConnection}
@@ -532,7 +525,7 @@ const ServerConsolePage = () => {
             >
               Retry Connection
             </button>
-            
+
             <button
               onClick={() => navigate('/servers')}
               className="w-48 text-xs py-2 px-4 border border-gray-200 hover:bg-gray-100 text-gray-800 rounded-md transition duration-200"
@@ -608,19 +601,19 @@ const ServerConsolePage = () => {
                   Stop
                 </button>
                 {/* Kill button - shown during power operations, restarting state, or when stop command has been sent */}
-                {(powerLoading || 
-                  server?.state?.toLowerCase() === 'restarting' || 
+                {(powerLoading ||
+                  server?.state?.toLowerCase() === 'restarting' ||
                   (stopCommandSent && isServerActive)) && (
-                  <button
-                    onClick={() => handlePowerAction('kill')}
-                    className="flex items-center px-3 py-2 cursor-pointer text-xs font-medium text-white
+                    <button
+                      onClick={() => handlePowerAction('kill')}
+                      className="flex items-center px-3 py-2 cursor-pointer text-xs font-medium text-white
                              bg-red-600 border border-red-600 rounded-lg 
                              hover:bg-red-700 transition-all duration-200"
-                  >
-                    <Square className="w-4 h-4 text-white mr-2" />
-                    Kill
-                  </button>
-                )}
+                    >
+                      <Square className="w-4 h-4 text-white mr-2" />
+                      Kill
+                    </button>
+                  )}
               </div>
             </div>
           </div>
@@ -636,12 +629,11 @@ const ServerConsolePage = () => {
               <span>{allocation?.alias ? allocation.alias : allocation?.bindAddress}:{allocation?.port || 'unknown'}</span>
             </div>
             <div className={`flex items-center ${getStateColor(server?.state || '')}`}>
-              <div className={`w-2 h-2 rounded-full mr-2 ${
-                server?.state?.toLowerCase() === 'running' ? 'bg-green-500' :
+              <div className={`w-2 h-2 rounded-full mr-2 ${server?.state?.toLowerCase() === 'running' ? 'bg-green-500' :
                 server?.state?.toLowerCase() === 'stopped' ? 'bg-red-500' :
-                server?.state?.toLowerCase() === 'installed' ? 'bg-gray-500' :
-                'bg-yellow-500'
-              }`} />
+                  server?.state?.toLowerCase() === 'installed' ? 'bg-gray-500' :
+                    'bg-yellow-500'
+                }`} />
               <span>
                 {/* @ts-ignore */}
                 {(server?.state?.charAt(0).toUpperCase() + server?.state?.slice(1) || '').replace('Installed', 'Connecting...')}
@@ -709,7 +701,7 @@ const ServerConsolePage = () => {
         {/* Console */}
         <div className="border-2 border-gray-50 rounded-2xl ring-2 ring-gray-50
                       ring-offset-1 ring-offset-gray-300 bg-[#191b25]">
-          <div 
+          <div
             ref={consoleRef}
             style={{
               fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
@@ -769,26 +761,26 @@ const ServerConsolePage = () => {
                 <AlertCircle className="w-6 h-6 text-amber-500 mr-3" />
                 <h3 className="text-lg font-semibold text-gray-900">EULA Agreement Required</h3>
               </div>
-              
+
               <p className="text-gray-600 text-sm mb-6 mt-2">
                 Your server requires acceptance of the Minecraft End User License Agreement (EULA) before it can start.
               </p>
-              
+
               <div className="bg-gray-50 rounded-md p-3 mb-4">
                 <p className="text-xs text-gray-700 leading-relaxed">
                   By accepting, you agree to the{' '}
-                  <a 
-                    href="https://www.minecraft.net/en-us/eula" 
-                    target="_blank" 
+                  <a
+                    href="https://www.minecraft.net/en-us/eula"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-indigo-600 hover:text-indigo-700"
                   >
                     Minecraft End User License Agreement&nbsp;
                   </a>
-                    and acknowledge that you have read and understood it.
+                  and acknowledge that you have read and understood it.
                 </p>
               </div>
-              
+
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowEulaModal(false)}
