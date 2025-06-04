@@ -15,7 +15,6 @@ import {
   HomeModernIcon,
   ArrowsPointingOutIcon,
   GlobeAmericasIcon,
-  AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../pages/[auth]/Auth';
 //import { useSystem } from '../contexts/SystemContext';
@@ -348,14 +347,6 @@ function Sidebar() {
                 icon={FolderIcon}
                 label="Files"
                 isActive={location.pathname.endsWith('/files')}
-                setRef={setTabRef}
-              />
-
-              <NavItem
-                to={`/servers/${serverId}/startup`}
-                icon={AdjustmentsHorizontalIcon}
-                label="Startup"
-                isActive={location.pathname.endsWith('/startup')}
                 setRef={setTabRef}
               />
 
