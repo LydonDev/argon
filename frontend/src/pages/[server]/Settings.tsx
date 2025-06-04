@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronRight, AlertCircle, Save,
-  RefreshCw, Check, X
-} from 'lucide-react';
+  ChevronRightIcon,
+  ExclamationCircleIcon,
+  DocumentIcon,
+  ArrowPathIcon,
+  CheckIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 interface Node {
@@ -56,22 +60,28 @@ interface Toast {
 }
 
 // Toast component
-const Toast: React.FC<{ toast: Toast; onDismiss: (id: string) => void }> = ({ toast, onDismiss }) => (
+const Toast: React.FC<{
+  toast: Toast;
+  onDismiss: (id: string) => void;
+}> = ({ toast, onDismiss }) => (
   <div
     className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 z-50
-      ${toast.type === 'success' ? 'bg-gray-900 text-white' : 'bg-red-500 text-white'}`}
+      ${toast.type === 'success'
+        ? 'bg-gray-900 text-white'
+        : 'bg-red-500 text-white'
+      }`}
   >
     {toast.type === 'success' ? (
-      <Check className="w-4 h-4" />
+      <CheckIcon className="w-4 h-4" />
     ) : (
-      <AlertCircle className="w-4 h-4" />
+      <ExclamationCircleIcon className="w-4 h-4" />
     )}
     <span className="text-sm font-medium">{toast.message}</span>
     <button
       onClick={() => onDismiss(toast.id)}
       className="ml-2 text-white/80 hover:text-white"
     >
-      <X className="w-4 h-4" />
+      <XMarkIcon className="w-4 h-4" />
     </button>
   </div>
 );
@@ -93,20 +103,20 @@ const ServerSettingsPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     dockerImage: '',
-    startupCommand: ''
+    startupCommand: '',
   });
 
   // Toast management
   const showToast = (message: string, type: Toast['type'] = 'success') => {
     const id = Math.random().toString(36);
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
+      setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
   };
 
   const dismissToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
   // Fetch server details
@@ -114,7 +124,7 @@ const ServerSettingsPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/servers/${id}?include[node]=true`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) throw new Error('Failed to fetch server details');
@@ -132,10 +142,11 @@ const ServerSettingsPage: React.FC = () => {
   const fetchConfiguration = async () => {
     try {
       const response = await fetch(`/api/servers/${id}/configuration`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) throw new Error('Failed to fetch server configuration');
+      if (!response.ok)
+        throw new Error('Failed to fetch server configuration');
       const data = await response.json();
 
       // Parse available images if it's a string
@@ -143,7 +154,10 @@ const ServerSettingsPage: React.FC = () => {
         try {
           data.dockerImage.available = JSON.parse(data.dockerImage.available);
         } catch (parseError) {
-          console.error('Failed to parse available Docker images:', parseError);
+          console.error(
+            'Failed to parse available Docker images:',
+            parseError
+          );
           data.dockerImage.available = [];
         }
       }
@@ -154,7 +168,7 @@ const ServerSettingsPage: React.FC = () => {
       setFormData({
         name: data.name,
         dockerImage: data.dockerImage.current,
-        startupCommand: data.startupCommand.current
+        startupCommand: data.startupCommand.current,
       });
     } catch (err) {
       showToast('Failed to fetch server configuration', 'error');
@@ -169,14 +183,14 @@ const ServerSettingsPage: React.FC = () => {
     }
 
     try {
-      setSaving(prev => ({ ...prev, name: true }));
+      setSaving((prev) => ({ ...prev, name: true }));
       const response = await fetch(`/api/servers/${id}/name`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: formData.name })
+        body: JSON.stringify({ name: formData.name }),
       });
 
       if (!response.ok) {
@@ -188,26 +202,29 @@ const ServerSettingsPage: React.FC = () => {
       showToast('Server name updated successfully');
 
       // Update local state
-      setServer(prev => prev ? { ...prev, name: result.name } : null);
-      setConfig(prev => prev ? { ...prev, name: result.name } : null);
+      setServer((prev) => (prev ? { ...prev, name: result.name } : null));
+      setConfig((prev) => (prev ? { ...prev, name: result.name } : null));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update server name', 'error');
+      showToast(
+        err instanceof Error ? err.message : 'Failed to update server name',
+        'error'
+      );
     } finally {
-      setSaving(prev => ({ ...prev, name: false }));
+      setSaving((prev) => ({ ...prev, name: false }));
     }
   };
 
   // Update Docker image
   const updateDockerImage = async () => {
     try {
-      setSaving(prev => ({ ...prev, dockerImage: true }));
+      setSaving((prev) => ({ ...prev, dockerImage: true }));
       const response = await fetch(`/api/servers/${id}/docker-image`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ dockerImage: formData.dockerImage })
+        body: JSON.stringify({ dockerImage: formData.dockerImage }),
       });
 
       if (!response.ok) {
@@ -219,14 +236,24 @@ const ServerSettingsPage: React.FC = () => {
       showToast('Docker image updated successfully');
 
       // Update local state
-      setConfig(prev => prev ? {
-        ...prev,
-        dockerImage: { ...prev.dockerImage, current: result.dockerImage }
-      } : null);
+      setConfig((prev) =>
+        prev
+          ? {
+            ...prev,
+            dockerImage: {
+              ...prev.dockerImage,
+              current: result.dockerImage,
+            },
+          }
+          : null
+      );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update Docker image', 'error');
+      showToast(
+        err instanceof Error ? err.message : 'Failed to update Docker image',
+        'error'
+      );
     } finally {
-      setSaving(prev => ({ ...prev, dockerImage: false }));
+      setSaving((prev) => ({ ...prev, dockerImage: false }));
     }
   };
 
@@ -238,33 +265,47 @@ const ServerSettingsPage: React.FC = () => {
     }
 
     try {
-      setSaving(prev => ({ ...prev, startupCommand: true }));
+      setSaving((prev) => ({ ...prev, startupCommand: true }));
       const response = await fetch(`/api/servers/${id}/startup-command`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ startupCommand: formData.startupCommand })
+        body: JSON.stringify({ startupCommand: formData.startupCommand }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update startup command');
+        throw new Error(
+          errorData.error || 'Failed to update startup command'
+        );
       }
 
       const result = await response.json();
       showToast('Startup command updated successfully');
 
       // Update local state
-      setConfig(prev => prev ? {
-        ...prev,
-        startupCommand: { ...prev.startupCommand, current: result.startupCommand }
-      } : null);
+      setConfig((prev) =>
+        prev
+          ? {
+            ...prev,
+            startupCommand: {
+              ...prev.startupCommand,
+              current: result.startupCommand,
+            },
+          }
+          : null
+      );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update startup command', 'error');
+      showToast(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update startup command',
+        'error'
+      );
     } finally {
-      setSaving(prev => ({ ...prev, startupCommand: false }));
+      setSaving((prev) => ({ ...prev, startupCommand: false }));
     }
   };
 
@@ -274,13 +315,19 @@ const ServerSettingsPage: React.FC = () => {
 
     switch (field) {
       case 'name':
-        setFormData(prev => ({ ...prev, name: config.name }));
+        setFormData((prev) => ({ ...prev, name: config.name }));
         break;
       case 'dockerImage':
-        setFormData(prev => ({ ...prev, dockerImage: config.dockerImage.current }));
+        setFormData((prev) => ({
+          ...prev,
+          dockerImage: config.dockerImage.current,
+        }));
         break;
       case 'startupCommand':
-        setFormData(prev => ({ ...prev, startupCommand: config.startupCommand.current }));
+        setFormData((prev) => ({
+          ...prev,
+          startupCommand: config.startupCommand.current,
+        }));
         break;
     }
   };
@@ -317,7 +364,7 @@ const ServerSettingsPage: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <ExclamationCircleIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-lg font-medium text-gray-900 mb-2">Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
@@ -334,7 +381,7 @@ const ServerSettingsPage: React.FC = () => {
   return (
     <div className="min-h-screen px-8 py-8 bg-gray-50">
       {/* Toast Messages */}
-      {toasts.map(toast => (
+      {toasts.map((toast) => (
         <Toast key={toast.id} toast={toast} onDismiss={dismissToast} />
       ))}
 
@@ -349,21 +396,23 @@ const ServerSettingsPage: React.FC = () => {
             >
               Servers
             </button>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRightIcon className="w-4 h-4 mx-1" />
             <button
               onClick={() => navigate(`/servers/${id}`)}
               className="hover:text-gray-900 transition-colors duration-100"
             >
               {server?.name}
             </button>
-            <ChevronRight className="w-4 h-4 mx-1" />
+            <ChevronRightIcon className="w-4 h-4 mx-1" />
             <span className="text-gray-900 font-medium">Settings</span>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Settings
+                </h1>
               </div>
             </div>
           </div>
@@ -376,8 +425,12 @@ const ServerSettingsPage: React.FC = () => {
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Server Name</h3>
-                  <p className="text-sm text-gray-500">Change the display name of your server</p>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Server Name
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Change the display name of your server
+                  </p>
                 </div>
               </div>
             </div>
@@ -390,7 +443,9 @@ const ServerSettingsPage: React.FC = () => {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm 
                            focus:outline-none focus:ring-2 focus:ring-gray-200"
                   placeholder="Enter server name"
@@ -413,19 +468,20 @@ const ServerSettingsPage: React.FC = () => {
                   <button
                     onClick={updateServerName}
                     disabled={saving.name || !hasChanges('name')}
-                    className="px-4 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md 
-                             hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed
-                             flex items-center space-x-1"
+                    className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-md 
+           hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed
+           flex items-center space-x-2"
                   >
                     {saving.name ? (
                       <>
-                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <ArrowPathIcon className="w-3 h-3 animate-spin" />
                         <span>Saving...</span>
                       </>
                     ) : (
                       <>
-                        <Save className="w-3 h-3" />
-                        <span>Save</span>
+                        <DocumentIcon className="w-3 h-3" />
+                        <span>Update</span>
                       </>
                     )}
                   </button>
@@ -440,8 +496,12 @@ const ServerSettingsPage: React.FC = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Docker Image</h3>
-                    <p className="text-sm text-gray-500">Select the Docker image for your server</p>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Docker Image
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Select the Docker image for your server
+                    </p>
                   </div>
                 </div>
               </div>
@@ -453,15 +513,21 @@ const ServerSettingsPage: React.FC = () => {
                   </label>
                   <select
                     value={formData.dockerImage}
-                    onChange={(e) => setFormData(prev => ({ ...prev, dockerImage: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dockerImage: e.target.value,
+                      }))
+                    }
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm 
                              focus:outline-none focus:ring-2 focus:ring-gray-200"
                   >
-                    {Array.isArray(config.dockerImage.available) && config.dockerImage.available.map((img) => (
-                      <option key={img.image} value={img.image}>
-                        {img.displayName || img.image}
-                      </option>
-                    ))}
+                    {Array.isArray(config.dockerImage.available) &&
+                      config.dockerImage.available.map((img) => (
+                        <option key={img.image} value={img.image}>
+                          {img.displayName || img.image}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -480,19 +546,22 @@ const ServerSettingsPage: React.FC = () => {
                     )}
                     <button
                       onClick={updateDockerImage}
-                      disabled={saving.dockerImage || !hasChanges('dockerImage')}
-                      className="px-4 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md 
-                               hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed
-                               flex items-center space-x-1"
+                      disabled={
+                        saving.dockerImage || !hasChanges('dockerImage')
+                      }
+                      className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-md 
+           hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed
+           flex items-center space-x-2"
                     >
                       {saving.dockerImage ? (
                         <>
-                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          <ArrowPathIcon className="w-3 h-3 animate-spin" />
                           <span>Updating...</span>
                         </>
                       ) : (
                         <>
-                          <Save className="w-3 h-3" />
+                          <DocumentIcon className="w-3 h-3" />
                           <span>Update</span>
                         </>
                       )}
@@ -509,8 +578,12 @@ const ServerSettingsPage: React.FC = () => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">Startup Command</h3>
-                    <p className="text-sm text-gray-500">Customize the command used to start your server</p>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Startup Command
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Customize the command used to start your server
+                    </p>
                   </div>
                 </div>
               </div>
@@ -522,7 +595,12 @@ const ServerSettingsPage: React.FC = () => {
                   </label>
                   <textarea
                     value={formData.startupCommand}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startupCommand: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        startupCommand: e.target.value,
+                      }))
+                    }
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm font-mono
                              focus:outline-none focus:ring-2 focus:ring-gray-200"
@@ -530,7 +608,10 @@ const ServerSettingsPage: React.FC = () => {
                   />
                   {config.startupCommand.default && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Default: <code className="bg-gray-100 px-1 rounded">{config.startupCommand.default}</code>
+                      Default:{' '}
+                      <code className="bg-gray-100 px-1 rounded">
+                        {config.startupCommand.default}
+                      </code>
                     </p>
                   )}
                 </div>
@@ -550,19 +631,22 @@ const ServerSettingsPage: React.FC = () => {
                     )}
                     <button
                       onClick={updateStartupCommand}
-                      disabled={saving.startupCommand || !hasChanges('startupCommand')}
-                      className="px-4 py-1.5 text-xs font-medium text-white bg-gray-900 rounded-md 
-                               hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed
-                               flex items-center space-x-1"
+                      disabled={
+                        saving.startupCommand || !hasChanges('startupCommand')
+                      }
+                      className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-md 
+           hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 
+           focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed
+           flex items-center space-x-2"
                     >
                       {saving.startupCommand ? (
                         <>
-                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          <ArrowPathIcon className="w-3 h-3 animate-spin" />
                           <span>Updating...</span>
                         </>
                       ) : (
                         <>
-                          <Save className="w-3 h-3" />
+                          <DocumentIcon className="w-3 h-3" />
                           <span>Update</span>
                         </>
                       )}
