@@ -21,7 +21,7 @@ const AdminPage = () => {
           </div>
 
           <div className="grid grid-cols-4 gap-4 mt-6">
-            <a href="https://discord.gg/qckQBHG8e3" className="bg-amber-50 shadow-xs transition border border-gray-200 
+            <a href="https://discord.gg/mxXMr6XW" className="bg-amber-50 shadow-xs transition border border-gray-200 
                            font-medium text-sm text-amber-700 py-2 px-4 rounded-md 
                            flex items-center space-x-2 hover:bg-amber-100">
               <HelpCircleIcon className="w-4 h-4" />
